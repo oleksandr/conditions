@@ -10,7 +10,7 @@ import "github.com/oleksandr/conditions"
 
 
 // Our condition to check
-s := "($0 > 0.45) AND ($1 == \"ON\" OR $2 == \"ACTIVE\") AND $3 == false"
+s := "($0 > 0.45) AND ($1 == `ON` OR $2 == \"ACTIVE\") AND $3 == false"
 
 // Parse the condition language and get expression
 p := NewParser(strings.NewReader(s))
@@ -31,6 +31,6 @@ if err != nil {
 
 ## Where did we use it?
 
-Below there is a diagram for a sample FBP flow (created using [FlowMaker](https://github.com/cascades-fbp/flowmaker)). You can see how we configurethe ContextA process with a condition via IIP packet.
+Here is a diagram for a sample FBP flow (created using [FlowMaker](https://github.com/cascades-fbp/flowmaker)). You can see how we configure the ContextA process with a condition via IIP packet.
 
 ![](https://raw.githubusercontent.com/oleksandr/conditions/master/Example.png)

@@ -5,7 +5,17 @@ import (
 	"testing"
 )
 
-var testData = []struct {
+var invalidTestData = []string{
+	"",
+	"$ AND true",
+	"A",
+	"$0 == DEMO",
+	"$0 == 'DEMO'",
+	"!$0",
+	"$0 <> `DEMO`",
+}
+
+var validTestData = []struct {
 	cond   string
 	args   []interface{}
 	result bool
@@ -13,6 +23,8 @@ var testData = []struct {
 }{
 	{"true", nil, true, false},
 	{"false", nil, false, false},
+	{"false OR true OR false OR false OR true", nil, true, false},
+	{"((false OR true) AND false) OR (false OR true)", nil, true, false},
 	{"$0 > true", nil, false, true},
 	{"$0 > true", []interface{}{43}, false, true},
 	{"$0 > true", []interface{}{false}, false, true},
@@ -23,16 +35,38 @@ var testData = []struct {
 	{"$0 AND false", []interface{}{true}, false, false},
 	{"56.43", nil, false, true},
 	{"$5", nil, false, true},
+	{"$0 > -100 AND $0 < -50", []interface{}{-75.4}, true, false},
 	{"$0", []interface{}{true}, true, false},
 	{"$0", []interface{}{false}, false, false},
 	{"\"OFF\"", nil, false, true},
+	{"`ON`", nil, false, true},
 	{"$0 == \"OFF\"", []interface{}{"OFF"}, true, false},
 	{"$0 > 10 AND $1 == \"OFF\"", []interface{}{14, "OFF"}, true, false},
 	{"($0 > 10) AND ($1 == \"OFF\")", []interface{}{14, "OFF"}, true, false},
+	{"($0 > 10) AND ($1 == \"OFF\") OR true", []interface{}{1, "ON"}, true, false},
 }
 
 func TestInvalid(t *testing.T) {
+	var (
+		expr Expr
+		err  error
+	)
 
+	for _, cond := range invalidTestData {
+		t.Log("--------")
+		t.Logf("Parsing: %s", cond)
+
+		p := NewParser(strings.NewReader(cond))
+		expr, err = p.Parse()
+		if err == nil {
+			t.Error("Should receive error")
+			break
+		}
+		if expr != nil {
+			t.Error("Expression should nil")
+			break
+		}
+	}
 }
 
 func TestValid(t *testing.T) {
@@ -42,7 +76,7 @@ func TestValid(t *testing.T) {
 		r    bool
 	)
 
-	for _, td := range testData {
+	for _, td := range validTestData {
 		t.Log("--------")
 		t.Logf("Parsing: %s", td.cond)
 
@@ -67,6 +101,7 @@ func TestValid(t *testing.T) {
 		}
 		if r != td.result {
 			t.Errorf("Expected %v, received: %v", td.result, r)
+			break
 		}
 	}
 

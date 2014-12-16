@@ -1,8 +1,8 @@
 # conditions
 
-This package offers a parser of a simple conditions specification language 
-(reduced set of arithmetic/logical operations). It was created for Flow-Based Programming components that 
-require configuration to perform some operations on the data received from multiple input ports.
+This package offers a parser of a simple conditions specification language (reduced set of arithmetic/logical operations). The package is mainly created for Flow-Based Programming components that require configuration to perform some operations on the data received from multiple input ports. But it can be used whereever you need externally define some logical conditions on the internal variables.
+
+Additional credits for this package go to [Handwritten Parsers & Lexers in Go](http://blog.gopheracademy.com/advent-2014/parsers-lexers/) by Ben Johnson on [Gopher Academy blog](http://blog.gopheracademy.com) and [InfluxML package from InfluxDB repository](https://github.com/influxdb/influxdb/tree/master/influxql).
 
 ## Usage example 
 ```

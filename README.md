@@ -29,7 +29,7 @@ if err != nil {
 
 ```
 
-## Where did we use it?
+## Where do we use it?
 
 Here is a diagram for a sample FBP flow (created using [FlowMaker](https://github.com/cascades-fbp/flowmaker)). You can see how we configure the ContextA process with a condition via IIP packet.
 

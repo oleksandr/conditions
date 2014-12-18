@@ -25,6 +25,8 @@ var validTestData = []struct {
 	{"false", nil, false, false},
 	{"false OR true OR false OR false OR true", nil, true, false},
 	{"((false OR true) AND false) OR (false OR true)", nil, true, false},
+	{"$0", []interface{}{true}, true, false},
+	{"$0", []interface{}{false}, false, false},
 	{"$0 > true", nil, false, true},
 	{"$0 > true", []interface{}{43}, false, true},
 	{"$0 > true", []interface{}{false}, false, true},

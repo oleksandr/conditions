@@ -6,26 +6,35 @@ Additional credits for this package go to [Handwritten Parsers & Lexers in Go](h
 
 ## Usage example 
 ```
-import "github.com/oleksandr/conditions"
+package main
 
+import (
+    "fmt"
+    "strings"
 
-// Our condition to check
-s := "($0 > 0.45) AND ($1 == `ON` OR $2 == \"ACTIVE\") AND $3 == false"
+    "github.com/oleksandr/conditions"
+)
 
-// Parse the condition language and get expression
-p := NewParser(strings.NewReader(s))
-expr, err := p.Parse()
-if err != nil {
-   // ...
+func main() {
+    // Our condition to check
+    s := "($0 > 0.45) AND ($1 == `ON` OR $2 == \"ACTIVE\") AND $3 == false"
+
+    // Parse the condition language and get expression
+    p := conditions.NewParser(strings.NewReader(s))
+    expr, err := p.Parse()
+    if err != nil {
+        // ...
+    }
+
+    // Evaluate expression passing data for $vars
+    r, err := conditions.Evaluate(expr, 0.12, "OFF", "ACTIVE", true)
+    if err != nil {
+        // ...
+    }
+
+    // r is false
+    fmt.Println("Evaluation result:", r)
 }
-
-// Evaluate expression passing data for $vars
-r, err := Evaluate(expr, 0.12, "OFF", "ACTIVE", true)
-if err != nil {
-   // ...
-}
-
-// r is false
 
 ```
 

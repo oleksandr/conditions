@@ -44,29 +44,32 @@ type Node interface {
 	String() string
 }
 
-func (_ *VarRef) node()          {}
-func (_ *NumberLiteral) node()   {}
-func (_ *StringLiteral) node()   {}
-func (_ *BooleanLiteral) node()  {}
-func (_ *TimeLiteral) node()     {}
-func (_ *DurationLiteral) node() {}
-func (_ *BinaryExpr) node()      {}
-func (_ *ParenExpr) node()       {}
+func (_ *VarRef) node()             {}
+func (_ *NumberLiteral) node()      {}
+func (_ *StringLiteral) node()      {}
+func (_ *BooleanLiteral) node()     {}
+func (_ *TimeLiteral) node()        {}
+func (_ *DurationLiteral) node()    {}
+func (_ *BinaryExpr) node()         {}
+func (_ *ParenExpr) node()          {}
+func (_ *SliceStringLiteral) node() {}
 
 // Expr represents an expression that can be evaluated to a value.
 type Expr interface {
 	Node
 	expr()
+	Args() []string
 }
 
-func (_ *VarRef) expr()          {}
-func (_ *NumberLiteral) expr()   {}
-func (_ *StringLiteral) expr()   {}
-func (_ *BooleanLiteral) expr()  {}
-func (_ *TimeLiteral) expr()     {}
-func (_ *DurationLiteral) expr() {}
-func (_ *BinaryExpr) expr()      {}
-func (_ *ParenExpr) expr()       {}
+func (_ *VarRef) expr()             {}
+func (_ *NumberLiteral) expr()      {}
+func (_ *StringLiteral) expr()      {}
+func (_ *BooleanLiteral) expr()     {}
+func (_ *TimeLiteral) expr()        {}
+func (_ *DurationLiteral) expr()    {}
+func (_ *BinaryExpr) expr()         {}
+func (_ *ParenExpr) expr()          {}
+func (_ *SliceStringLiteral) expr() {}
 
 // VarRef represents a reference to a variable.
 type VarRef struct {
@@ -76,6 +79,10 @@ type VarRef struct {
 // String returns a string representation of the variable reference.
 func (r *VarRef) String() string { return QuoteIdent(r.Val) }
 
+func (r *VarRef) Args() []string {
+	return []string{r.Val}
+}
+
 // NumberLiteral represents a numeric literal.
 type NumberLiteral struct {
 	Val float64
@@ -83,6 +90,26 @@ type NumberLiteral struct {
 
 // String returns a string representation of the literal.
 func (l *NumberLiteral) String() string { return strconv.FormatFloat(l.Val, 'f', 3, 64) }
+
+func (n *NumberLiteral) Args() []string {
+	args := []string{}
+	return args
+}
+
+type SliceStringLiteral struct {
+	Val []string
+}
+
+// String returns a string representation of the literal.
+func (l *SliceStringLiteral) String() string {
+	// return "to implement"
+	return fmt.Sprintf("%s", l.Val)
+}
+
+func (l *SliceStringLiteral) Args() []string {
+	args := []string{}
+	return args
+}
 
 // BooleanLiteral represents a boolean literal.
 type BooleanLiteral struct {
@@ -97,6 +124,11 @@ func (l *BooleanLiteral) String() string {
 	return "false"
 }
 
+func (l *BooleanLiteral) Args() []string {
+	args := []string{}
+	return args
+}
+
 // StringLiteral represents a string literal.
 type StringLiteral struct {
 	Val string
@@ -108,6 +140,11 @@ func (l *StringLiteral) String() string { return Quote(l.Val) }
 // TimeLiteral represents a point-in-time literal.
 type TimeLiteral struct {
 	Val time.Time
+}
+
+func (l *StringLiteral) Args() []string {
+	args := []string{}
+	return args
 }
 
 // String returns a string representation of the literal.
@@ -133,6 +170,15 @@ func (e *BinaryExpr) String() string {
 	return fmt.Sprintf("%s %s %s", e.LHS.String(), e.Op, e.RHS.String())
 }
 
+func (e *BinaryExpr) Args() []string {
+	args := []string{}
+
+	args = append(e.LHS.Args(), args...)
+	args = append(e.RHS.Args(), args...)
+
+	return args
+}
+
 // ParenExpr represents a parenthesized expression.
 type ParenExpr struct {
 	Expr Expr
@@ -140,6 +186,13 @@ type ParenExpr struct {
 
 // String returns a string representation of the parenthesized expression.
 func (e *ParenExpr) String() string { return fmt.Sprintf("(%s)", e.Expr.String()) }
+
+func (p *ParenExpr) Args() []string {
+	args := []string{}
+	args = append(p.Expr.Args(), args...)
+
+	return args
+}
 
 // Visitor can be called by Walk to traverse an AST hierarchy.
 // The Visit() function is called once per node.

@@ -19,14 +19,20 @@ const (
 	literalEnd
 
 	operatorBegin
-	AND // AND
-	OR  // OR
-	EQ  // =
-	NEQ // !=
-	LT  // <
-	LTE // <=
-	GT  // >
-	GTE // >=
+	AND   // AND
+	OR    // OR
+	EQ    // =
+	NEQ   // !=
+	LT    // <
+	LTE   // <=
+	GT    // >
+	GTE   // >=
+	NAND  // NAND
+	XOR   // XOR
+	EREG  // =~
+	NEREG // !~
+	IN    // IN
+	NOTIN // NOT IN
 	operatorEnd
 
 	LPAREN // (
@@ -52,6 +58,13 @@ var tokens = [...]string{
 	GT:  ">",
 	GTE: ">=",
 
+	NAND:  "NAND",
+	XOR:   "XOR",
+	EREG:  "=~",
+	NEREG: "!~",
+	IN:    "IN",
+	NOTIN: "NOT IN",
+
 	LPAREN: "(",
 	RPAREN: ")",
 }
@@ -67,11 +80,12 @@ func (tok Token) String() string {
 // Precedence returns the operator precedence of the binary operator token.
 func (tok Token) Precedence() int {
 	switch tok {
-	case OR:
+	case OR, XOR:
 		return 1
-	case AND:
+	case AND, NAND:
 		return 2
-	case EQ, NEQ, LT, LTE, GT, GTE:
+
+	case EQ, NEQ, LT, LTE, GT, GTE, IN, NOTIN, EREG, NEREG:
 		return 3
 	}
 	return 0

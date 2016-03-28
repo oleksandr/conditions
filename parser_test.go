@@ -74,8 +74,17 @@ var validTestData = []struct {
 	{`[foo] in ["bonjour", "le monde", "oui"]`, map[string]interface{}{"foo": "le monde"}, true, false},
 	{`[foo] in ["bonjour", "le monde", "oui"]`, map[string]interface{}{"foo": "world"}, false, false},
 
+	// NOT IN with array of string
+	{`[foo] not in ["bonjour", "le monde", "oui"]`, map[string]interface{}{"foo": "le monde"}, false, false},
+	{`[foo] not in ["bonjour", "le monde", "oui"]`, map[string]interface{}{"foo": "world"}, true, false},
+
 	// IN with array of numbers
 	{`[foo] in [2,3,4]`, map[string]interface{}{"foo": 4}, true, false},
+	{`[foo] in [2,3,4]`, map[string]interface{}{"foo": 5}, false, false},
+
+	// NOT IN with array of numbers
+	{`[foo] not in [2,3,4]`, map[string]interface{}{"foo": 4}, false, false},
+	{`[foo] not in [2,3,4]`, map[string]interface{}{"foo": 5}, true, false},
 
 	// =~
 	{"[status] =~ /^5\\d\\d/", map[string]interface{}{"status": "500"}, true, false},

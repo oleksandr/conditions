@@ -3,11 +3,13 @@ package conditions
 import (
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var invalidTestData = []string{
 	"",
-	"[] AND true",
+	// "[] AND true",
 	"A",
 	"[var0] == DEMO",
 	"[var0] == 'DEMO'",
@@ -62,13 +64,18 @@ var validTestData = []struct {
 	{"true nand false", nil, true, false},
 	{"true NAND true", nil, false, false},
 
-	//IN
+	// IN
 	{"[foo] in [foobar]", map[string]interface{}{"foo": "findme", "foobar": []string{"notme", "may", "findme", "lol"}}, true, false},
-	//{`[foo] in ["hello", "world", "foo"]`, map[string]interface{}{"foo": "world"}, false, false},
-	//{`[foo] in ["hello", "world", "foo"]`, map[string]interface{}{"foo": "monde"}, true, true},
 
-	//NOT IN
+	// NOT IN
 	{"[foo] not in [foobar]", map[string]interface{}{"foo": "dontfindme", "foobar": []string{"notme", "may", "findme", "lol"}}, true, false},
+
+	// IN with array of string
+	{`[foo] in ["bonjour", "le monde", "oui"]`, map[string]interface{}{"foo": "le monde"}, true, false},
+	{`[foo] in ["bonjour", "le monde", "oui"]`, map[string]interface{}{"foo": "world"}, false, false},
+
+	// IN with array of numbers
+	{`[foo] in [2,3,4]`, map[string]interface{}{"foo": 4}, true, false},
 
 	// =~
 	{"[status] =~ /^5\\d\\d/", map[string]interface{}{"status": "500"}, true, false},
@@ -178,4 +185,18 @@ func TestValid(t *testing.T) {
 			t.Fail()
 		}
 	*/
+}
+
+func TestExpressionsVariableNames(t *testing.T) {
+	cond := "[@foo][a] == true and [bar] == true or [var9] > 10"
+	p := NewParser(strings.NewReader(cond))
+	expr, err := p.Parse()
+	assert.Nil(t, err)
+
+	args := Variables(expr)
+	assert.Contains(t, args, "@foo.a", "...")
+	assert.Contains(t, args, "bar", "...")
+	assert.Contains(t, args, "var9", "...")
+	assert.NotContains(t, args, "foo", "...")
+	assert.NotContains(t, args, "@foo", "...")
 }

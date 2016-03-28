@@ -53,6 +53,7 @@ func (_ *DurationLiteral) node()    {}
 func (_ *BinaryExpr) node()         {}
 func (_ *ParenExpr) node()          {}
 func (_ *SliceStringLiteral) node() {}
+func (_ *SliceNumberLiteral) node() {}
 
 // Expr represents an expression that can be evaluated to a value.
 type Expr interface {
@@ -70,6 +71,7 @@ func (_ *DurationLiteral) expr()    {}
 func (_ *BinaryExpr) expr()         {}
 func (_ *ParenExpr) expr()          {}
 func (_ *SliceStringLiteral) expr() {}
+func (_ *SliceNumberLiteral) expr() {}
 
 // VarRef represents a reference to a variable.
 type VarRef struct {
@@ -102,11 +104,24 @@ type SliceStringLiteral struct {
 
 // String returns a string representation of the literal.
 func (l *SliceStringLiteral) String() string {
-	// return "to implement"
 	return fmt.Sprintf("%s", l.Val)
 }
 
 func (l *SliceStringLiteral) Args() []string {
+	args := []string{}
+	return args
+}
+
+type SliceNumberLiteral struct {
+	Val []float64
+}
+
+// String returns a string representation of the literal.
+func (l *SliceNumberLiteral) String() string {
+	return fmt.Sprintf("%s", l.Val)
+}
+
+func (l *SliceNumberLiteral) Args() []string {
 	args := []string{}
 	return args
 }

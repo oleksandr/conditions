@@ -1,6 +1,7 @@
 package conditions
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"strconv"
@@ -95,7 +96,13 @@ func (p *Parser) scanWithMapping() (Token, string) {
 		var err error
 		t, tt, err = p.scanArg()
 		if err != nil {
-			tok = ILLEGAL
+			p.unscan()
+			t, tt, err = p.scanArray(tt)
+			if err == nil {
+				tok = ARRAY
+			} else {
+				tok = ILLEGAL
+			}
 		} else {
 			tok = IDENT
 		}
@@ -274,9 +281,53 @@ func (p *Parser) parseUnaryExpr() (Expr, error) {
 		return &NumberLiteral{Val: v}, nil
 	case TRUE, FALSE:
 		return &BooleanLiteral{Val: (tok == TRUE)}, nil
+	case ARRAY:
+		mapVal := []interface{}{}
+		err := json.Unmarshal([]byte(`[`+lit+`]`), &mapVal)
+		if len(mapVal) == 0 {
+			return nil, fmt.Errorf("Empty Slice not castable")
+		}
+		switch t := mapVal[0].(type) {
+		case string:
+			values := []string{}
+			for _, v := range mapVal {
+				values = append(values, v.(string))
+			}
+			return &SliceStringLiteral{Val: values}, err
+		case float64:
+			values := []float64{}
+			for _, v := range mapVal {
+				values = append(values, v.(float64))
+			}
+			return &SliceNumberLiteral{Val: values}, err
+		default:
+			return nil, fmt.Errorf("Slice of unknow type %s %T", t, t)
+		}
+
 	default:
 		return nil, fmt.Errorf("Parsing error: tok=%v, lit=%v", tok, lit)
 	}
+}
+
+func (p *Parser) scanArray(tt string) (rune, string, error) {
+	var t rune
+
+	var ttTmp string
+	var sep string
+
+	for {
+		t, ttTmp = p.scan()
+		if t == ']' {
+			return t, tt, nil
+		}
+
+		tt = tt + sep + ttTmp
+		// pp.Print(tt)
+		// fmt.Printf("\n")
+	}
+
+	return t, tt, nil
+
 }
 
 // extract [variable] to variable

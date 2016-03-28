@@ -14,6 +14,7 @@ const (
 	IDENT  // Variable references $0, $5, etc
 	NUMBER // 12345.67
 	STRING // "abc"
+	ARRAY  // array of values (string or number) ["a","b","c"]  [342,4325,6,4]
 	TRUE   // true
 	FALSE  // false
 	literalEnd
@@ -46,6 +47,7 @@ var tokens = [...]string{
 	IDENT:  "IDENT",
 	NUMBER: "NUMBER",
 	STRING: "STRING",
+	ARRAY:  "ARRAY",
 	TRUE:   "TRUE",
 	FALSE:  "FALSE",
 

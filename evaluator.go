@@ -162,29 +162,55 @@ func applyNOTIN(l, r Expr) (*BooleanLiteral, error) {
 // applyIN applies IN operation to l/r operands
 func applyIN(l, r Expr) (*BooleanLiteral, error) {
 	var (
-		a     string
-		b     []string
 		err   error
 		found bool
 	)
-	a, err = getString(l)
-	if err != nil {
-		return nil, err
-	}
-
-	b, err = getSliceString(r)
-	if err != nil {
-		return nil, err
-	}
-
-	found = false
-	for _, e := range b {
-		if a == e {
-			found = true
+	// pp.Print(l)
+	switch t := l.(type) {
+	case *StringLiteral:
+		var a string
+		var b []string
+		a, err = getString(l)
+		if err != nil {
+			return nil, err
 		}
+
+		b, err = getSliceString(r)
+
+		if err != nil {
+			return nil, err
+		}
+
+		found = false
+		for _, e := range b {
+			if a == e {
+				found = true
+			}
+		}
+	case *NumberLiteral:
+		var a float64
+		var b []float64
+		a, err = getNumber(l)
+		if err != nil {
+			return nil, err
+		}
+
+		b, err = getSliceNumber(r)
+
+		if err != nil {
+			return nil, err
+		}
+
+		found = false
+		for _, e := range b {
+			if a == e {
+				found = true
+			}
+		}
+	default:
+		return nil, fmt.Errorf("Can not evaluate Literal of unknow type %s %T", t, t)
 	}
 
-	// pp.Print(a, b, found)
 	return &BooleanLiteral{Val: found}, nil
 }
 
@@ -414,6 +440,17 @@ func getString(e Expr) (string, error) {
 	}
 }
 
+// getSliceNumber performs type assertion and returns []float64 value or error
+func getSliceNumber(e Expr) ([]float64, error) {
+	switch n := e.(type) {
+	case *SliceNumberLiteral:
+		return n.Val, nil
+	default:
+		return []float64{}, fmt.Errorf("Literal is not a slice of float64: %v", n)
+	}
+}
+
+// getSliceString performs type assertion and returns []string value or error
 func getSliceString(e Expr) ([]string, error) {
 	switch n := e.(type) {
 	case *SliceStringLiteral:

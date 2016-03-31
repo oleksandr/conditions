@@ -3,21 +3,23 @@ package conditions
 import (
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var invalidTestData = []string{
 	"",
-	"$ AND true",
+	// "[] AND true",
 	"A",
-	"$0 == DEMO",
-	"$0 == 'DEMO'",
-	"!$0",
-	"$0 <> `DEMO`",
+	"[var0] == DEMO",
+	"[var0] == 'DEMO'",
+	"![var0]",
+	"[var0] <> `DEMO`",
 }
 
 var validTestData = []struct {
 	cond   string
-	args   []interface{}
+	args   map[string]interface{}
 	result bool
 	isErr  bool
 }{
@@ -25,30 +27,76 @@ var validTestData = []struct {
 	{"false", nil, false, false},
 	{"false OR true OR false OR false OR true", nil, true, false},
 	{"((false OR true) AND false) OR (false OR true)", nil, true, false},
-	{"$0", []interface{}{true}, true, false},
-	{"$0", []interface{}{false}, false, false},
-	{"$0 > true", nil, false, true},
-	{"$0 > true", []interface{}{43}, false, true},
-	{"$0 > true", []interface{}{false}, false, true},
-	{"$0 AND $1", []interface{}{true, true}, true, false},
-	{"$0 AND $1", []interface{}{true, false}, false, false},
-	{"$0 AND $1", []interface{}{false, true}, false, false},
-	{"$0 AND $1", []interface{}{false, false}, false, false},
-	{"$0 AND false", []interface{}{true}, false, false},
+	{"[var0]", map[string]interface{}{"var0": true}, true, false},
+	{"[var0]", map[string]interface{}{"var0": false}, false, false},
+	{"[var0] > true", nil, false, true},
+	{"[var0] > true", map[string]interface{}{"var0": 43}, false, true},
+	{"[var0] > true", map[string]interface{}{"var0": false}, false, true},
+	{"[var0] and [var1]", map[string]interface{}{"var0": true, "var1": true}, true, false},
+	{"[var0] AND [var1]", map[string]interface{}{"var0": true, "var1": false}, false, false},
+	{"[var0] AND [var1]", map[string]interface{}{"var0": false, "var1": true}, false, false},
+	{"[var0] AND [var1]", map[string]interface{}{"var0": false, "var1": false}, false, false},
+	{"[var0] AND false", map[string]interface{}{"var0": true}, false, false},
 	{"56.43", nil, false, true},
-	{"$5", nil, false, true},
-	{"$0 > -100 AND $0 < -50", []interface{}{-75.4}, true, false},
-	{"$0", []interface{}{true}, true, false},
-	{"$0", []interface{}{false}, false, false},
+	{"[var5]", nil, false, true},
+	{"[var0] > -100 AND [var0] < -50", map[string]interface{}{"var0": -75.4}, true, false},
+	{"[var0]", map[string]interface{}{"var0": true}, true, false},
+	{"[var0]", map[string]interface{}{"var0": false}, false, false},
 	{"\"OFF\"", nil, false, true},
 	{"`ON`", nil, false, true},
-	{"$0 == \"OFF\"", []interface{}{"OFF"}, true, false},
-	{"$0 > 10 AND $1 == \"OFF\"", []interface{}{14, "OFF"}, true, false},
-	{"($0 > 10) AND ($1 == \"OFF\")", []interface{}{14, "OFF"}, true, false},
-	{"($0 > 10) AND ($1 == \"OFF\") OR true", []interface{}{1, "ON"}, true, false},
+	{"[var0] == \"OFF\"", map[string]interface{}{"var0": "OFF"}, true, false},
+	{"[var0] > 10 AND [var1] == \"OFF\"", map[string]interface{}{"var0": 14, "var1": "OFF"}, true, false},
+	{"([var0] > 10) AND ([var1] == \"OFF\")", map[string]interface{}{"var0": 14, "var1": "OFF"}, true, false},
+	{"([var0] > 10) AND ([var1] == \"OFF\") OR true", map[string]interface{}{"var0": 1, "var1": "ON"}, true, false},
+	{"[foo][dfs] == true and [bar] == true", map[string]interface{}{"foo.dfs": true, "bar": true}, true, false},
+	{"[foo][dfs][a] == true and [bar] == true", map[string]interface{}{"foo.dfs.a": true, "bar": true}, true, false},
+	{"[@foo][a] == true and [bar] == true", map[string]interface{}{"@foo.a": true, "bar": true}, true, false},
+	{"[foo][unknow] == true and [bar] == true", map[string]interface{}{"foo.dfs": true, "bar": true}, false, true},
+	//XOR
+	{"false XOR false", nil, false, false},
+	{"false xor true", nil, true, false},
+	{"true XOR false", nil, true, false},
+	{"true xor true", nil, false, false},
+
+	//NAND
+	{"false NAND false", nil, true, false},
+	{"false nand true", nil, true, false},
+	{"true nand false", nil, true, false},
+	{"true NAND true", nil, false, false},
+
+	// IN
+	{"[foo] in [foobar]", map[string]interface{}{"foo": "findme", "foobar": []string{"notme", "may", "findme", "lol"}}, true, false},
+
+	// NOT IN
+	{"[foo] not in [foobar]", map[string]interface{}{"foo": "dontfindme", "foobar": []string{"notme", "may", "findme", "lol"}}, true, false},
+
+	// IN with array of string
+	{`[foo] in ["bonjour", "le monde", "oui"]`, map[string]interface{}{"foo": "le monde"}, true, false},
+	{`[foo] in ["bonjour", "le monde", "oui"]`, map[string]interface{}{"foo": "world"}, false, false},
+
+	// NOT IN with array of string
+	{`[foo] not in ["bonjour", "le monde", "oui"]`, map[string]interface{}{"foo": "le monde"}, false, false},
+	{`[foo] not in ["bonjour", "le monde", "oui"]`, map[string]interface{}{"foo": "world"}, true, false},
+
+	// IN with array of numbers
+	{`[foo] in [2,3,4]`, map[string]interface{}{"foo": 4}, true, false},
+	{`[foo] in [2,3,4]`, map[string]interface{}{"foo": 5}, false, false},
+
+	// NOT IN with array of numbers
+	{`[foo] not in [2,3,4]`, map[string]interface{}{"foo": 4}, false, false},
+	{`[foo] not in [2,3,4]`, map[string]interface{}{"foo": 5}, true, false},
+
+	// =~
+	{"[status] =~ /^5\\d\\d/", map[string]interface{}{"status": "500"}, true, false},
+	{"[status] =~ /^4\\d\\d/", map[string]interface{}{"status": "500"}, false, false},
+
+	// !~
+	{"[status] !~ /^5\\d\\d/", map[string]interface{}{"status": "500"}, false, false},
+	{"[status] !~ /^4\\d\\d/", map[string]interface{}{"status": "500"}, true, false},
 }
 
 func TestInvalid(t *testing.T) {
+
 	var (
 		expr Expr
 		err  error
@@ -72,6 +120,7 @@ func TestInvalid(t *testing.T) {
 }
 
 func TestValid(t *testing.T) {
+
 	var (
 		expr Expr
 		err  error
@@ -91,8 +140,8 @@ func TestValid(t *testing.T) {
 			break
 		}
 
-		t.Log("Evaluating with:", td.args)
-		r, err = Evaluate(expr, td.args...)
+		t.Log("Evaluating with: %#v", td.args)
+		r, err = Evaluate(expr, td.args)
 		if err != nil {
 			if td.isErr {
 				continue
@@ -145,4 +194,18 @@ func TestValid(t *testing.T) {
 			t.Fail()
 		}
 	*/
+}
+
+func TestExpressionsVariableNames(t *testing.T) {
+	cond := "[@foo][a] == true and [bar] == true or [var9] > 10"
+	p := NewParser(strings.NewReader(cond))
+	expr, err := p.Parse()
+	assert.Nil(t, err)
+
+	args := Variables(expr)
+	assert.Contains(t, args, "@foo.a", "...")
+	assert.Contains(t, args, "bar", "...")
+	assert.Contains(t, args, "var9", "...")
+	assert.NotContains(t, args, "foo", "...")
+	assert.NotContains(t, args, "@foo", "...")
 }

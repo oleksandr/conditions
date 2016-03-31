@@ -3,8 +3,7 @@ package conditions
 import (
 	"fmt"
 	"reflect"
-	"strconv"
-	"strings"
+	"regexp"
 )
 
 var (
@@ -12,12 +11,12 @@ var (
 )
 
 // Evaluate takes an expr and evaluates it using given args
-func Evaluate(expr Expr, args ...interface{}) (bool, error) {
+func Evaluate(expr Expr, args map[string]interface{}) (bool, error) {
 	if expr == nil {
 		return false, fmt.Errorf("Provided expression is nil")
 	}
 
-	result, err := evaluateSubtree(expr, args...)
+	result, err := evaluateSubtree(expr, args)
 	if err != nil {
 		return false, err
 	}
@@ -29,7 +28,7 @@ func Evaluate(expr Expr, args ...interface{}) (bool, error) {
 }
 
 // evaluateSubtree performs given expr evaluation recursively
-func evaluateSubtree(expr Expr, args ...interface{}) (Expr, error) {
+func evaluateSubtree(expr Expr, args map[string]interface{}) (Expr, error) {
 	if expr == nil {
 		return falseExpr, fmt.Errorf("Provided expression is nil")
 	}
@@ -41,25 +40,27 @@ func evaluateSubtree(expr Expr, args ...interface{}) (Expr, error) {
 
 	switch n := expr.(type) {
 	case *ParenExpr:
-		return evaluateSubtree(n.Expr, args...)
+		return evaluateSubtree(n.Expr, args)
 	case *BinaryExpr:
-		lv, err = evaluateSubtree(n.LHS, args...)
+		lv, err = evaluateSubtree(n.LHS, args)
 		if err != nil {
 			return falseExpr, err
 		}
-		rv, err = evaluateSubtree(n.RHS, args...)
+		rv, err = evaluateSubtree(n.RHS, args)
 		if err != nil {
 			return falseExpr, err
 		}
 		return applyOperator(n.Op, lv, rv)
 	case *VarRef:
-		index, err := strconv.Atoi(strings.Replace(n.Val, "$", "", -1))
+		//index, err := strconv.Atoi(strings.Replace(n.Val, "$", "", -1))
+		index := n.Val
 		if err != nil {
-			return falseExpr, fmt.Errorf("Failed to resolve argument index: %s", err.Error())
+			return falseExpr, fmt.Errorf("Failed to resolve argument index %s: %s", n.Val, err.Error())
 		}
-		if index >= len(args) {
-			return falseExpr, fmt.Errorf("Not enough arguments provided. Number of arguments: %v. Requested element: %s", len(args), n.Val)
+		if _, ok := args[index]; !ok {
+			return falseExpr, fmt.Errorf("argument: %v not found", index)
 		}
+
 		kind := reflect.TypeOf(args[index]).Kind()
 		switch kind {
 		case reflect.Int:
@@ -76,6 +77,8 @@ func evaluateSubtree(expr Expr, args ...interface{}) (Expr, error) {
 			return &StringLiteral{Val: args[index].(string)}, nil
 		case reflect.Bool:
 			return &BooleanLiteral{Val: args[index].(bool)}, nil
+		case reflect.Slice:
+			return &SliceStringLiteral{Val: args[index].([]string)}, nil
 		}
 		return falseExpr, fmt.Errorf("Unsupported argument %s type: %s", n.Val, kind)
 	}
@@ -102,8 +105,147 @@ func applyOperator(op Token, l, r Expr) (*BooleanLiteral, error) {
 		return applyLT(l, r)
 	case LTE:
 		return applyLTE(l, r)
+	case XOR:
+		return applyXOR(l, r)
+	case NAND:
+		return applyNAND(l, r)
+	case IN:
+		return applyIN(l, r)
+	case NOTIN:
+		return applyNOTIN(l, r)
+	case EREG:
+		return applyEREG(l, r)
+	case NEREG:
+		return applyNEREG(l, r)
 	}
 	return &BooleanLiteral{Val: false}, fmt.Errorf("Unsupported operator: %s", op)
+}
+
+// applyEREG applies EREG operation to l/r operands
+func applyNEREG(l, r Expr) (*BooleanLiteral, error) {
+	result, err := applyEREG(l, r)
+	result.Val = !result.Val
+	return result, err
+}
+
+// applyEREG applies EREG operation to l/r operands
+func applyEREG(l, r Expr) (*BooleanLiteral, error) {
+	var (
+		a     string
+		b     string
+		err   error
+		match bool
+	)
+	a, err = getString(l)
+	if err != nil {
+		return nil, err
+	}
+
+	b, err = getString(r)
+	if err != nil {
+		return nil, err
+	}
+	match = false
+	match, err = regexp.MatchString(b, a)
+
+	// pp.Print(a, b, match)
+	return &BooleanLiteral{Val: match}, err
+}
+
+// applyNOTIN applies NOT IN operation to l/r operands
+func applyNOTIN(l, r Expr) (*BooleanLiteral, error) {
+	result, err := applyIN(l, r)
+	result.Val = !result.Val
+	return result, err
+}
+
+// applyIN applies IN operation to l/r operands
+func applyIN(l, r Expr) (*BooleanLiteral, error) {
+	var (
+		err   error
+		found bool
+	)
+	// pp.Print(l)
+	switch t := l.(type) {
+	case *StringLiteral:
+		var a string
+		var b []string
+		a, err = getString(l)
+		if err != nil {
+			return nil, err
+		}
+
+		b, err = getSliceString(r)
+
+		if err != nil {
+			return nil, err
+		}
+
+		found = false
+		for _, e := range b {
+			if a == e {
+				found = true
+			}
+		}
+	case *NumberLiteral:
+		var a float64
+		var b []float64
+		a, err = getNumber(l)
+		if err != nil {
+			return nil, err
+		}
+
+		b, err = getSliceNumber(r)
+
+		if err != nil {
+			return nil, err
+		}
+
+		found = false
+		for _, e := range b {
+			if a == e {
+				found = true
+			}
+		}
+	default:
+		return nil, fmt.Errorf("Can not evaluate Literal of unknow type %s %T", t, t)
+	}
+
+	return &BooleanLiteral{Val: found}, nil
+}
+
+// applyXOR applies || operation to l/r operands
+func applyXOR(l, r Expr) (*BooleanLiteral, error) {
+	var (
+		a, b bool
+		err  error
+	)
+	a, err = getBoolean(l)
+	if err != nil {
+		return nil, err
+	}
+	b, err = getBoolean(r)
+	if err != nil {
+		return nil, err
+	}
+	return &BooleanLiteral{Val: (a != b)}, nil
+}
+
+// applyNAND applies NAND operation to l/r operands
+func applyNAND(l, r Expr) (*BooleanLiteral, error) {
+	var (
+		a, b bool
+		err  error
+	)
+	a, err = getBoolean(l)
+	if err != nil {
+		return nil, err
+	}
+	b, err = getBoolean(r)
+	if err != nil {
+		return nil, err
+	}
+	return &BooleanLiteral{Val: (!(a && b))}, nil
 }
 
 // applyAND applies && operation to l/r operands
@@ -295,6 +437,26 @@ func getString(e Expr) (string, error) {
 		return n.Val, nil
 	default:
 		return "", fmt.Errorf("Literal is not a string: %v", n)
+	}
+}
+
+// getSliceNumber performs type assertion and returns []float64 value or error
+func getSliceNumber(e Expr) ([]float64, error) {
+	switch n := e.(type) {
+	case *SliceNumberLiteral:
+		return n.Val, nil
+	default:
+		return []float64{}, fmt.Errorf("Literal is not a slice of float64: %v", n)
+	}
+}
+
+// getSliceString performs type assertion and returns []string value or error
+func getSliceString(e Expr) ([]string, error) {
+	switch n := e.(type) {
+	case *SliceStringLiteral:
+		return n.Val, nil
+	default:
+		return []string{}, fmt.Errorf("Literal is not a slice of string: %v", n)
 	}
 }
 

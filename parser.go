@@ -1,6 +1,7 @@
 package conditions
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"strconv"
@@ -85,8 +86,25 @@ func (p *Parser) scanWithMapping() (Token, string) {
 		if t == scanner.Float || t == scanner.Int {
 			tok = IDENT
 			tt = "$" + tt
+
 		} else {
 			tok = ILLEGAL
+		}
+	case '[':
+
+		// TODO : capter les tableau de string comme ["hello", "world", "foo"] => StringLiteral
+		var err error
+		t, tt, err = p.scanArg()
+		if err != nil {
+			p.unscan()
+			t, tt, err = p.scanArray(tt)
+			if err == nil {
+				tok = ARRAY
+			} else {
+				tok = ILLEGAL
+			}
+		} else {
+			tok = IDENT
 		}
 	case '!':
 		t, tt = p.scan()
@@ -94,6 +112,9 @@ func (p *Parser) scanWithMapping() (Token, string) {
 		if t == '=' {
 			tok = NEQ
 			tt = "!="
+		} else if t == '~' {
+			tok = NEREG
+			tt = "!~"
 		} else {
 			tok = ILLEGAL
 		}
@@ -125,21 +146,53 @@ func (p *Parser) scanWithMapping() (Token, string) {
 		if t == '=' {
 			tok = EQ
 			tt = "=="
+		} else if t == '~' {
+			tok = EREG
+			tt = "=~"
 		} else {
 			tok = ILLEGAL
 		}
+
+	case '/':
+		var ttTmp string
+		for {
+			t, ttTmp = p.scan()
+			tt = tt + ttTmp
+			if t == '/' {
+				tok = STRING
+				break
+			}
+		}
+
 	case scanner.String:
 		tok = STRING
 	case scanner.Ident:
-		if tt == "AND" {
+		ttU := strings.ToUpper(tt)
+
+		if ttU == "AND" {
 			tok = AND
-		} else if tt == "OR" {
+		} else if ttU == "OR" {
 			tok = OR
-		} else if tt == "true" {
+		} else if ttU == "XOR" {
+			tok = XOR
+		} else if ttU == "NAND" {
+			tok = NAND
+		} else if ttU == "IN" {
+			tok = IN
+		} else if ttU == "NOT" {
+			_, tmp := p.scan()
+			if strings.ToUpper(tmp) == "IN" {
+				tok = NOTIN
+				tt = "NOT IN"
+			} else {
+				p.unscan()
+				tok = ILLEGAL
+			}
+		} else if ttU == "TRUE" {
 			tok = TRUE
-		} else if tt == "false" {
+		} else if ttU == "FALSE" {
 			tok = FALSE
-		} else if strings.HasPrefix(tt, "C") || strings.HasPrefix(tt, "P") {
+		} else if strings.HasPrefix(ttU, "C") || strings.HasPrefix(ttU, "P") {
 			tok = IDENT
 		} else {
 			tok = ILLEGAL
@@ -166,10 +219,14 @@ func (p *Parser) parseExpr() (Expr, error) {
 	// Loop over operations and unary exprs and build a tree based on precendence.
 	for {
 		// If the next token is NOT an operator then return the expression.
-		op, _ := p.scanWithMapping()
+		op, tx := p.scanWithMapping()
+		if op == ILLEGAL {
+			return nil, fmt.Errorf("ILLEGAL %s", tx)
+		}
 		if !op.isOperator() {
 			p.unscan()
 			return expr, nil
+
 		}
 
 		// Otherwise parse the next unary expression.
@@ -189,6 +246,7 @@ func (p *Parser) parseExpr() (Expr, error) {
 			expr = &BinaryExpr{LHS: expr, RHS: rhs, Op: op}
 		}
 	}
+
 }
 
 // parseUnaryExpr parses an non-binary expression.
@@ -223,7 +281,105 @@ func (p *Parser) parseUnaryExpr() (Expr, error) {
 		return &NumberLiteral{Val: v}, nil
 	case TRUE, FALSE:
 		return &BooleanLiteral{Val: (tok == TRUE)}, nil
+	case ARRAY:
+		mapVal := []interface{}{}
+		err := json.Unmarshal([]byte(`[`+lit+`]`), &mapVal)
+		if len(mapVal) == 0 {
+			return nil, fmt.Errorf("Empty Slice not castable")
+		}
+		switch t := mapVal[0].(type) {
+		case string:
+			values := []string{}
+			for _, v := range mapVal {
+				values = append(values, v.(string))
+			}
+			return &SliceStringLiteral{Val: values}, err
+		case float64:
+			values := []float64{}
+			for _, v := range mapVal {
+				values = append(values, v.(float64))
+			}
+			return &SliceNumberLiteral{Val: values}, err
+		default:
+			return nil, fmt.Errorf("Slice of unknow type %s %T", t, t)
+		}
+
 	default:
 		return nil, fmt.Errorf("Parsing error: tok=%v, lit=%v", tok, lit)
 	}
+}
+
+func (p *Parser) scanArray(tt string) (rune, string, error) {
+	var t rune
+
+	var ttTmp string
+	var sep string
+
+	for {
+		t, ttTmp = p.scan()
+		if t == ']' {
+			return t, tt, nil
+		}
+
+		tt = tt + sep + ttTmp
+		// pp.Print(tt)
+		// fmt.Printf("\n")
+	}
+
+	return t, tt, nil
+
+}
+
+// extract [variable] to variable
+// extract [variable][key1][key1] to variable.key1.key2
+// handle variable name which start with a "@"
+func (p *Parser) scanArg() (rune, string, error) {
+	var err error
+	var t rune
+	var tt string
+	var ttTmp string
+	var sep string
+
+	sep = ""
+
+	for {
+		t, ttTmp = p.scan()
+		tt = tt + sep + ttTmp
+		if t == '@' {
+			continue
+		}
+		t, _ := p.scan()
+		if t == ']' {
+			ti, _ := p.scan()
+			if ti == '[' {
+				sep = "."
+				continue
+			} else {
+				p.unscan()
+			}
+			return t, tt, nil
+		}
+
+		if t != ']' {
+			return t, tt, fmt.Errorf("Args error")
+		}
+	}
+
+	return t, tt, err
+}
+
+func Variables(expression Expr) []string {
+	return removeDuplicates(expression.Args())
+}
+
+func removeDuplicates(a []string) []string {
+	result := []string{}
+	seen := map[string]string{}
+	for _, val := range a {
+		if _, ok := seen[val]; !ok {
+			result = append(result, val)
+			seen[val] = val
+		}
+	}
+	return result
 }

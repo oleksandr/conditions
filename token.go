@@ -14,19 +14,26 @@ const (
 	IDENT  // Variable references $0, $5, etc
 	NUMBER // 12345.67
 	STRING // "abc"
+	ARRAY  // array of values (string or number) ["a","b","c"]  [342,4325,6,4]
 	TRUE   // true
 	FALSE  // false
 	literalEnd
 
 	operatorBegin
-	AND // AND
-	OR  // OR
-	EQ  // =
-	NEQ // !=
-	LT  // <
-	LTE // <=
-	GT  // >
-	GTE // >=
+	AND   // AND
+	OR    // OR
+	EQ    // =
+	NEQ   // !=
+	LT    // <
+	LTE   // <=
+	GT    // >
+	GTE   // >=
+	NAND  // NAND
+	XOR   // XOR
+	EREG  // =~
+	NEREG // !~
+	IN    // IN
+	NOTIN // NOT IN
 	operatorEnd
 
 	LPAREN // (
@@ -40,6 +47,7 @@ var tokens = [...]string{
 	IDENT:  "IDENT",
 	NUMBER: "NUMBER",
 	STRING: "STRING",
+	ARRAY:  "ARRAY",
 	TRUE:   "TRUE",
 	FALSE:  "FALSE",
 
@@ -51,6 +59,13 @@ var tokens = [...]string{
 	LTE: "<=",
 	GT:  ">",
 	GTE: ">=",
+
+	NAND:  "NAND",
+	XOR:   "XOR",
+	EREG:  "=~",
+	NEREG: "!~",
+	IN:    "IN",
+	NOTIN: "NOT IN",
 
 	LPAREN: "(",
 	RPAREN: ")",
@@ -67,11 +82,12 @@ func (tok Token) String() string {
 // Precedence returns the operator precedence of the binary operator token.
 func (tok Token) Precedence() int {
 	switch tok {
-	case OR:
+	case OR, XOR:
 		return 1
-	case AND:
+	case AND, NAND:
 		return 2
-	case EQ, NEQ, LT, LTE, GT, GTE:
+
+	case EQ, NEQ, LT, LTE, GT, GTE, IN, NOTIN, EREG, NEREG:
 		return 3
 	}
 	return 0

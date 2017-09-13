@@ -27,7 +27,8 @@ func main() {
     }
 
     // Evaluate expression passing data for $vars
-    r, err := conditions.Evaluate(expr, 0.12, "OFF", "ACTIVE", true)
+    data := map[string]interface{}{"$0": 0.12, "$1": "OFF", "$2": "ACTIVE", "$3": false}
+    r, err := conditions.Evaluate(expr, data)
     if err != nil {
         // ...
     }

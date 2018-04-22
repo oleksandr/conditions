@@ -236,7 +236,7 @@ func (p *Parser) parseExpr() (Expr, error) {
 		}
 
 		// Assign the new root based on the precendence of the LHS and RHS operators.
-		if lhs, ok := expr.(*BinaryExpr); ok && lhs.Op.Precedence() <= op.Precedence() {
+		if lhs, ok := expr.(*BinaryExpr); ok && lhs.Op.Precedence() < op.Precedence() {
 			expr = &BinaryExpr{
 				LHS: lhs.LHS,
 				RHS: &BinaryExpr{LHS: lhs.RHS, RHS: rhs, Op: op},

@@ -118,7 +118,7 @@ type SliceNumberLiteral struct {
 
 // String returns a string representation of the literal.
 func (l *SliceNumberLiteral) String() string {
-	return fmt.Sprintf("%s", l.Val)
+	return fmt.Sprintf("%v", l.Val)
 }
 
 func (l *SliceNumberLiteral) Args() []string {

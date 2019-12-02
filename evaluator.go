@@ -78,7 +78,6 @@ func evaluateSubtree(expr Expr, args map[string]interface{}) (Expr, error) {
 		case reflect.Bool:
 			return &BooleanLiteral{Val: args[index].(bool)}, nil
 		case reflect.Slice:
-			return &SliceStringLiteral{Val: args[index].([]string)}, nil
 			stringsSlice := []string{}
 			if slice, ok := args[index].([]interface{}); ok {
 				for _, value := range slice {

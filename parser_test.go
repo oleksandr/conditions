@@ -93,8 +93,19 @@ var validTestData = []struct {
 	// !~
 	{"[status] !~ /^5\\d\\d/", map[string]interface{}{"status": "500"}, false, false},
 	{"[status] !~ /^4\\d\\d/", map[string]interface{}{"status": "500"}, true, false},
-}
 
+	{`[foo] HAS "5"`, map[string]interface{}{"foo": []string{"5", "3"}}, true, false},
+	{`[foo] HAS "4"`, map[string]interface{}{"foo": []string{"5", "3"}}, false, false},
+	{`[foo] HAS ["4"]`, map[string]interface{}{"foo": []string{"5", "3"}}, false, true},
+	{`[foo] HAS 3`, map[string]interface{}{"foo": []string{"5", "3"}}, false, true},
+
+	{`[foo] JOINT ["5", "7"]`, map[string]interface{}{"foo": []string{"5", "3"}}, true, false},
+	{`[foo] JOINT ["4", "8"]`, map[string]interface{}{"foo": []string{"5", "3"}}, false, false},
+	{`[foo] JOINT [5, 3]`, map[string]interface{}{"foo": []string{"5", "3"}}, false, true},
+	{`[foo] JOINT "4"`, map[string]interface{}{"foo": []string{"5", "3"}}, false, true},
+	{`[foo] JOINT ["5", "7"]`, map[string]interface{}{"foo": "4"}, false, true},
+	{`[foo] JOINT ["5", "7"]`, map[string]interface{}{"foo": []int{5, 7}}, false, true},
+}
 
 func TestInvalid(t *testing.T) {
 
@@ -140,13 +151,12 @@ func TestValid(t *testing.T) {
 			t.Error(err.Error())
 			break
 		}
-
 		r, err = Evaluate(expr, td.args)
 		if err != nil {
 			if td.isErr {
 				continue
 			}
-			t.Errorf("Unexpected error evaluating: %s", expr)
+			t.Errorf("Unexpected error evaluating: %v", expr)
 			t.Error(err.Error())
 			break
 		}

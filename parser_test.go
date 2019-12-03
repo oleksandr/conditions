@@ -99,12 +99,12 @@ var validTestData = []struct {
 	{`[foo] HAS ["4"]`, map[string]interface{}{"foo": []string{"5", "3"}}, false, true},
 	{`[foo] HAS 3`, map[string]interface{}{"foo": []string{"5", "3"}}, false, true},
 
-	{`[foo] JOINT ["5", "7"]`, map[string]interface{}{"foo": []string{"5", "3"}}, true, false},
-	{`[foo] JOINT ["4", "8"]`, map[string]interface{}{"foo": []string{"5", "3"}}, false, false},
-	{`[foo] JOINT [5, 3]`, map[string]interface{}{"foo": []string{"5", "3"}}, false, true},
-	{`[foo] JOINT "4"`, map[string]interface{}{"foo": []string{"5", "3"}}, false, true},
-	{`[foo] JOINT ["5", "7"]`, map[string]interface{}{"foo": "4"}, false, true},
-	{`[foo] JOINT ["5", "7"]`, map[string]interface{}{"foo": []int{5, 7}}, false, true},
+	{`[foo] INTERSECTS ["5", "7"]`, map[string]interface{}{"foo": []string{"5", "3"}}, true, false},
+	{`[foo] INTERSECTS ["4", "8"]`, map[string]interface{}{"foo": []string{"5", "3"}}, false, false},
+	{`[foo] INTERSECTS [5, 3]`, map[string]interface{}{"foo": []string{"5", "3"}}, false, true},
+	{`[foo] INTERSECTS "4"`, map[string]interface{}{"foo": []string{"5", "3"}}, false, true},
+	{`[foo] INTERSECTS ["5", "7"]`, map[string]interface{}{"foo": "4"}, false, true},
+	{`[foo] INTERSECTS ["5", "7"]`, map[string]interface{}{"foo": []int{5, 7}}, false, true},
 }
 
 func TestInvalid(t *testing.T) {

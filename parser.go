@@ -179,8 +179,8 @@ func (p *Parser) scanWithMapping() (Token, string) {
 			tok = NAND
 		} else if ttU == "IN" {
 			tok = IN
-		} else if ttU == "JOINT" {
-			tok = JOINT
+		} else if ttU == "INTERSECTS" {
+			tok = INTERSECTS
 		} else if ttU == "HAS" {
 			tok = HAS
 		} else if ttU == "NOT" {

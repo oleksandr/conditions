@@ -129,24 +129,24 @@ func applyOperator(op Token, l, r Expr) (*BooleanLiteral, error) {
 		return applyEREG(l, r)
 	case NEREG:
 		return applyNEREG(l, r)
-	case JOINT:
-		return applyJOINT(l, r)
+	case INTERSECTS:
+		return applyINTERSECTS(l, r)
 	case HAS:
 		return applyHAS(l, r)
 	}
 	return &BooleanLiteral{Val: false}, fmt.Errorf("Unsupported operator: %s", op)
 }
 
-// applyJOINT return true if intersect of two sets is not empty (todo: extend for number slices, upgrade for case insensitive)
-func applyJOINT(l, r Expr) (*BooleanLiteral, error) {
+// applyINTERSECTS return true if intersect of two sets is not empty (todo: extend for number slices, upgrade for case insensitive)
+func applyINTERSECTS(l, r Expr) (*BooleanLiteral, error) {
 	left, err := getSliceString(l)
 	if err != nil {
-		return &BooleanLiteral{Val: false}, errors.Wrap(err, "left operand of JOINT operator must have string slice type")
+		return &BooleanLiteral{Val: false}, errors.Wrap(err, "left operand of INTERSECTS operator must have string slice type")
 	}
 
 	right, err := getSliceString(r)
 	if err != nil {
-		return &BooleanLiteral{Val: false}, errors.Wrap(err, "right operand of JOINT operator must have string slice type")
+		return &BooleanLiteral{Val: false}, errors.Wrap(err, "right operand of INTERSECTS operator must have string slice type")
 	}
 
 	for _, val := range left {

@@ -43,7 +43,7 @@ var validTestData = []struct {
 	{"[var0]", map[string]interface{}{"var0": true}, true, false},
 	{"[var0]", map[string]interface{}{"var0": false}, false, false},
 	{"\"OFF\"", nil, false, true},
-	{"`ON`", nil, false, true},
+	//{"`ON`", nil, false, true},
 	{"[var0] == \"OFF\"", map[string]interface{}{"var0": "OFF"}, true, false},
 	{"[var0] > 10 AND [var1] == \"OFF\"", map[string]interface{}{"var0": 14, "var1": "OFF"}, true, false},
 	{"([var0] > 10) AND ([var1] == \"OFF\")", map[string]interface{}{"var0": 14, "var1": "OFF"}, true, false},
@@ -93,6 +93,18 @@ var validTestData = []struct {
 	// !~
 	{"[status] !~ /^5\\d\\d/", map[string]interface{}{"status": "500"}, false, false},
 	{"[status] !~ /^4\\d\\d/", map[string]interface{}{"status": "500"}, true, false},
+
+	{`[foo] HAS "5"`, map[string]interface{}{"foo": []string{"5", "3"}}, true, false},
+	{`[foo] HAS "4"`, map[string]interface{}{"foo": []string{"5", "3"}}, false, false},
+	{`[foo] HAS ["4"]`, map[string]interface{}{"foo": []string{"5", "3"}}, false, true},
+	{`[foo] HAS 3`, map[string]interface{}{"foo": []string{"5", "3"}}, false, true},
+
+	{`[foo] INTERSECTS ["5", "7"]`, map[string]interface{}{"foo": []string{"5", "3"}}, true, false},
+	{`[foo] INTERSECTS ["4", "8"]`, map[string]interface{}{"foo": []string{"5", "3"}}, false, false},
+	{`[foo] INTERSECTS [5, 3]`, map[string]interface{}{"foo": []string{"5", "3"}}, false, true},
+	{`[foo] INTERSECTS "4"`, map[string]interface{}{"foo": []string{"5", "3"}}, false, true},
+	{`[foo] INTERSECTS ["5", "7"]`, map[string]interface{}{"foo": "4"}, false, true},
+	{`[foo] INTERSECTS ["5", "7"]`, map[string]interface{}{"foo": []int{5, 7}}, false, true},
 }
 
 func TestInvalid(t *testing.T) {
@@ -139,14 +151,12 @@ func TestValid(t *testing.T) {
 			t.Error(err.Error())
 			break
 		}
-
-		t.Log("Evaluating with: %#v", td.args)
 		r, err = Evaluate(expr, td.args)
 		if err != nil {
 			if td.isErr {
 				continue
 			}
-			t.Errorf("Unexpected error evaluating: %s", expr)
+			t.Errorf("Unexpected error evaluating: %v", expr)
 			t.Error(err.Error())
 			break
 		}

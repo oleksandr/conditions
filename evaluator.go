@@ -2,6 +2,7 @@ package conditions
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"reflect"
 	"regexp"
 )
@@ -78,7 +79,18 @@ func evaluateSubtree(expr Expr, args map[string]interface{}) (Expr, error) {
 		case reflect.Bool:
 			return &BooleanLiteral{Val: args[index].(bool)}, nil
 		case reflect.Slice:
-			return &SliceStringLiteral{Val: args[index].([]string)}, nil
+			stringsSlice := []string{}
+			if slice, ok := args[index].([]interface{}); ok {
+				for _, value := range slice {
+					if s, ok := value.(string); ok {
+						stringsSlice = append(stringsSlice, s)
+					}
+				}
+				return &SliceStringLiteral{Val: stringsSlice}, nil
+			}
+			if _, ok := args[index].([]string); ok {
+				return &SliceStringLiteral{Val: args[index].([]string)}, nil
+			}
 		}
 		return falseExpr, fmt.Errorf("Unsupported argument %s type: %s", n.Val, kind)
 	}
@@ -117,8 +129,55 @@ func applyOperator(op Token, l, r Expr) (*BooleanLiteral, error) {
 		return applyEREG(l, r)
 	case NEREG:
 		return applyNEREG(l, r)
+	case INTERSECTS:
+		return applyINTERSECTS(l, r)
+	case HAS:
+		return applyHAS(l, r)
 	}
 	return &BooleanLiteral{Val: false}, fmt.Errorf("Unsupported operator: %s", op)
+}
+
+// applyINTERSECTS return true if intersect of two sets is not empty (todo: extend for number slices, upgrade for case insensitive)
+func applyINTERSECTS(l, r Expr) (*BooleanLiteral, error) {
+	left, err := getSliceString(l)
+	if err != nil {
+		return &BooleanLiteral{Val: false}, errors.Wrap(err, "left operand of INTERSECTS operator must have string slice type")
+	}
+
+	right, err := getSliceString(r)
+	if err != nil {
+		return &BooleanLiteral{Val: false}, errors.Wrap(err, "right operand of INTERSECTS operator must have string slice type")
+	}
+
+	for _, val := range left {
+		for _, rightVal := range right {
+			if val == rightVal {
+				// If at least one element found at right set - intersection already is not empty
+				return &BooleanLiteral{Val: true}, nil
+			}
+		}
+	}
+	return &BooleanLiteral{Val: false}, nil
+}
+
+// applyHAS applies HAS operation to l/r operands
+func applyHAS(l, r Expr) (*BooleanLiteral, error) {
+	left, err := getSliceString(l)
+	if err != nil {
+		return &BooleanLiteral{Val: false}, errors.Wrap(err, "left operand of HAS operator must have string slice type")
+	}
+
+	right, err := getString(r)
+	if err != nil {
+		return &BooleanLiteral{Val: false}, errors.Wrap(err, "right operand of HAS operator must be a string")
+	}
+
+	for _, val := range left {
+		if val == right {
+			return &BooleanLiteral{Val: true}, nil
+		}
+	}
+	return &BooleanLiteral{Val: false}, nil
 }
 
 // applyEREG applies EREG operation to l/r operands

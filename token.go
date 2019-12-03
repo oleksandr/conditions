@@ -20,20 +20,22 @@ const (
 	literalEnd
 
 	operatorBegin
-	AND   // AND
-	OR    // OR
-	EQ    // =
-	NEQ   // !=
-	LT    // <
-	LTE   // <=
-	GT    // >
-	GTE   // >=
-	NAND  // NAND
-	XOR   // XOR
-	EREG  // =~
-	NEREG // !~
-	IN    // IN
-	NOTIN // NOT IN
+	AND        // AND
+	OR         // OR
+	EQ         // =
+	NEQ        // !=
+	LT         // <
+	LTE        // <=
+	GT         // >
+	GTE        // >=
+	NAND       // NAND
+	XOR        // XOR
+	EREG       // =~
+	NEREG      // !~
+	IN         // IN
+	NOTIN      // NOT IN
+	INTERSECTS // INTERSECTS (two sets has not empty intersect)
+	HAS        // HAS (element contains at set as left operand)
 	operatorEnd
 
 	LPAREN // (
@@ -69,6 +71,9 @@ var tokens = [...]string{
 
 	LPAREN: "(",
 	RPAREN: ")",
+
+	INTERSECTS: "INTERSECTS",
+	HAS:        "HAS",
 }
 
 // String returns the string representation of the token.
@@ -87,7 +92,7 @@ func (tok Token) Precedence() int {
 	case AND, NAND:
 		return 2
 
-	case EQ, NEQ, LT, LTE, GT, GTE, IN, NOTIN, EREG, NEREG:
+	case EQ, NEQ, LT, LTE, GT, GTE, IN, NOTIN, EREG, NEREG, INTERSECTS, HAS:
 		return 3
 	}
 	return 0
